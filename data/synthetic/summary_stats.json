@@ -1,0 +1,22 @@
+{
+  "sampling_period": "2026-11-07 to 2026-11-13 (7 days, 5-min interval)",
+  "total_samples": 2016,
+  "machine_speed_avg_mmin": 1500.6,
+  "basis_weight_avg_gm2": 15.0,
+  "moisture_in_avg_pct": 67.98,
+  "moisture_out_avg_pct": 5.0,
+  "moisture_out_std_pct": 0.511,
+  "thermal_energy_baseline_kWht": 2593.1,
+  "out_of_spec_events": 6,
+  "out_of_spec_rate_pct": 0.298,
+  "hood_temp_avg_C": 399.8,
+  "yankee_surface_avg_C": 100.0,
+  "steam_pressure_avg_bar": 5.2,
+  "gas_flow_avg_nm3h": 319.8,
+  "steam_flow_avg_th": 7.21,
+  "production_avg_th": 7.295,
+  "softness_avg": 8.01,
+  "capillary_rise_avg_mm": 85.0,
+  "monthly_energy_saving_pct_target": 10.0,
+  "weekly_waste_reduction_pct_target": 55.0
+}

@@ -20,7 +20,8 @@ import pandas as pd
 from datetime import datetime, timedelta
 
 RNG = np.random.default_rng(seed=42)
-OUT_DIR = "/home/z/my-project/inno-latif-shasta/data/synthetic"
+_REPO_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+OUT_DIR = os.path.join(_REPO_ROOT, "data", "synthetic")
 os.makedirs(OUT_DIR, exist_ok=True)
 
 # ----------------------------------------------------------------------------

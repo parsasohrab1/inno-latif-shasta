@@ -17,8 +17,9 @@ import json
 import subprocess
 import urllib.request
 import urllib.error
+import os
 
-REPO = "/home/z/my-project/inno-latif-shasta"
+REPO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 HOST = "127.0.0.1"
 PORT = 8765
 BASE = f"http://{HOST}:{PORT}"

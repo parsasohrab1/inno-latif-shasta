@@ -72,9 +72,21 @@ class MoisturePredictorV2:
     HORIZON = 3
     INPUT_LAG = 6
     N_FEATURES = 8
-    MODEL_DIR = "/home/z/my-project/inno-latif-shasta/data/models"
-    MODEL_PATH = os.path.join(MODEL_DIR, "lstm_moisture.pt")
-    SCALER_PATH = os.path.join(MODEL_DIR, "lstm_scaler.json")
+    # مسیر پروژه را نسب به این فایل محاسبه می‌کنیم (نه hard-code)
+    # app/models/moisture_predictor_v2.py → app/models → app → repo root (3 سطح)
+    _REPO_ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
+    @classmethod
+    def _model_dir(cls):
+        return os.path.join(cls._REPO_ROOT, "data", "models")
+
+    @property
+    def MODEL_PATH(self):
+        return os.path.join(self._model_dir(), "lstm_moisture.pt")
+
+    @property
+    def SCALER_PATH(self):
+        return os.path.join(self._model_dir(), "lstm_scaler.json")
 
     def __init__(self, prefer_torch: bool = True):
         self.prefer_torch = prefer_torch and TORCH_AVAILABLE
@@ -93,7 +105,7 @@ class MoisturePredictorV2:
     def _init_torch(self):
         """ساخت/بارگذاری مدل PyTorch."""
         try:
-            os.makedirs(self.MODEL_DIR, exist_ok=True)
+            os.makedirs(self._model_dir(), exist_ok=True)
             self._torch_model = _LSTMModel(
                 n_features=self.N_FEATURES,
                 hidden=32,
@@ -164,7 +176,7 @@ class MoisturePredictorV2:
     def save(self) -> None:
         """ذخیره وزن‌ها برای استفاده‌ی بعدی."""
         if self.model_type == "torch_lstm" and self._torch_model is not None:
-            os.makedirs(self.MODEL_DIR, exist_ok=True)
+            os.makedirs(self._model_dir(), exist_ok=True)
             torch.save(self._torch_model.state_dict(), self.MODEL_PATH)
             with open(self.SCALER_PATH, "w") as f:
                 json.dump(self._scaler, f)

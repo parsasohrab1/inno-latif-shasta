@@ -6,7 +6,13 @@
 """
 
 import os
+import sys
 import json
+# مسیر scripts و repo را به sys.path اضافه کن تا import _font_util کار کند
+_SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
+_REPO_ROOT = os.path.dirname(_SCRIPT_DIR)
+sys.path.insert(0, _SCRIPT_DIR)
+sys.path.insert(0, _REPO_ROOT)
 import numpy as np
 import pandas as pd
 import matplotlib
@@ -29,8 +35,8 @@ def fa_lines(text):
     """شکل‌دهی متن چند خطی فارسی."""
     return "\n".join(fa(line) for line in str(text).split("\n"))
 
-DATA = "/home/z/my-project/inno-latif-shasta/data/synthetic"
-OUT = "/home/z/my-project/inno-latif-shasta/docs/figures"
+DATA = os.path.join(_REPO_ROOT, "data", "synthetic")
+OUT = os.path.join(_REPO_ROOT, "docs", "figures")
 os.makedirs(OUT, exist_ok=True)
 
 with open(os.path.join(DATA, "summary_stats.json"), encoding="utf-8") as f:

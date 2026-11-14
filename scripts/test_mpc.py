@@ -11,7 +11,11 @@
 
 import sys
 import os
-sys.path.insert(0, "/home/z/my-project/inno-latif-shasta")
+# مسیر پروژه و scripts را به‌صورت نسبی از محل این اسکریپت محاسبه کن (نه hard-code)
+_SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
+_REPO_ROOT = os.path.dirname(_SCRIPT_DIR)
+sys.path.insert(0, _REPO_ROOT)
+sys.path.insert(0, _SCRIPT_DIR)  # برای import _font_util
 
 import numpy as np
 import pandas as pd
@@ -109,7 +113,8 @@ def main():
         predictor.update({"moisture_out": out.moisture_out_pct})
 
     df = pd.DataFrame(rows)
-    out_csv = "/home/z/my-project/inno-latif-shasta/data/synthetic/mpc_simulation.csv"
+    out_csv = os.path.join(_REPO_ROOT, "data", "synthetic", "mpc_simulation.csv")
+    os.makedirs(os.path.dirname(out_csv), exist_ok=True)
     df.to_csv(out_csv, index=False)
     print(f"✓ Simulation: {df.shape} -> {out_csv}")
     print(df[["minute", "moisture_out_pct", "thermal_energy_kWht",
@@ -150,7 +155,8 @@ def main():
     ax.legend(loc="upper right", fontsize=9)
     ax.grid(True, alpha=0.3)
 
-    out_png = "/home/z/my-project/inno-latif-shasta/docs/figures/fig_mpc_simulation.png"
+    out_png = os.path.join(_REPO_ROOT, "docs", "figures", "fig_mpc_simulation.png")
+    os.makedirs(os.path.dirname(out_png), exist_ok=True)
     plt.savefig(out_png, dpi=150)
     plt.close()
     print(f"✓ Figure: {out_png}")

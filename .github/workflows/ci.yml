@@ -111,13 +111,20 @@ jobs:
       - name: Install dependencies
         run: |
           pip install -r requirements.txt
-          # فونت‌های فارسی برای نمودارها
-          sudo apt-get update && sudo apt-get install -y fonts-noto-cjk
-          mkdir -p ~/.local/share/fonts
-          curl -sL -o /tmp/v.zip "https://github.com/rastikerdar/vazirmatn/releases/download/v33.003/Vazirmatn-v33.003.zip"
-          unzip -q /tmp/v.zip -d /tmp/vz
-          cp /tmp/vz/fonts/ttf/Vazirmatn-*.ttf ~/.local/share/fonts/
-          fc-cache -f
+          # تلاش برای نصب فونت Vazirmatn (اختیاری — اسکریپت با fallback به DejaVu Sans هم کار می‌کند)
+          sudo apt-get update
+          sudo apt-get install -y unzip fontconfig
+          mkdir -p ~/.local/share/fonts /usr/share/fonts/truetype/vazirmatn
+          # روش ۱: دانلود مستقیم از release رسمی
+          if curl -sSL -o /tmp/v.zip "https://github.com/rastikerdar/vazirmatn/releases/download/v33.003/Vazirmatn-v33.003.zip"; then
+            unzip -q /tmp/v.zip -d /tmp/vz || true
+            # جستجوی فایل‌های ttf در هر زیرشاخه
+            find /tmp/vz -name "Vazirmatn-*.ttf" -exec cp {} ~/.local/share/fonts/ \; 2>/dev/null || true
+            find /tmp/vz -name "Vazirmatn-*.ttf" -exec sudo cp {} /usr/share/fonts/truetype/vazirmatn/ \; 2>/dev/null || true
+          fi
+          fc-cache -f || true
+          echo "=== installed Vazirmatn fonts ==="
+          fc-list | grep -i vazir || echo "(Vazirmatn not installed — scripts will use DejaVu Sans fallback)"
 
       - name: Run MPC simulation test
         env:

@@ -17,15 +17,11 @@ import numpy as np
 import pandas as pd
 import matplotlib
 matplotlib.use("Agg")
-import matplotlib.font_manager as fm
-fm.fontManager.addfont('/home/z/.local/share/fonts/Vazirmatn-Regular.ttf')
-fm.fontManager.addfont('/home/z/.local/share/fonts/Vazirmatn-Bold.ttf')
+from _font_util import setup_vazirmatn
+setup_vazirmatn()
 import matplotlib.pyplot as plt
 import arabic_reshaper
 from bidi.algorithm import get_display
-
-plt.rcParams['font.sans-serif'] = ['Vazirmatn', 'DejaVu Sans']
-plt.rcParams['axes.unicode_minus'] = False
 
 def fa(t):
     return get_display(arabic_reshaper.reshape(str(t)))

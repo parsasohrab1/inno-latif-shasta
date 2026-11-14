@@ -1,0 +1,28 @@
+# پیکربندی Prometheus برای جمع‌آوری متریک‌های دوقلوی دیجیتال لطیف
+
+global:
+  scrape_interval: 15s       # هر ۱۵ ثانیه
+  evaluation_interval: 15s
+  external_labels:
+    cluster: latif-pilot
+    region: iran
+
+scrape_configs:
+  # ---- سرور FastAPI لطیف ----
+  - job_name: "latif-api"
+    metrics_path: /metrics
+    static_configs:
+      - targets: ["api:8000"]
+        labels:
+          service: digital-twin
+          env: pilot
+
+  # ---- Prometheus خودش (سلامت سرویس) ----
+  - job_name: "prometheus"
+    static_configs:
+      - targets: ["localhost:9090"]
+
+# در فاز Pilot:
+#   - alertmanager برای هشدارها (کسری KPI، افت کامل اتصال سنسور)
+#   - node-exporter برای متریک‌های هاست
+#   - alert rules برای پیک گاز > حد، رطوبت خارج از محدوده > ۳ بار متوالی

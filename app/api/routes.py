@@ -1,18 +1,19 @@
 """مسیرهای REST و WebSocket برای دوقلوی دیجیتال.
 
 مسیرها:
-  GET  /api/health             : سلامت سرور
-  GET  /api/status             : وضعیت شبیه‌ساز + historian
-  GET  /api/sensors/latest     : آخرین نمونه سنسور
-  GET  /api/sensors/history    : تاریخچه (پارامتر n)
-  GET  /api/kpi                : KPI های زنده
-  POST /api/mpc/solve          : حل MPC
-  POST /api/mpc/apply          : اعمال set-point پیشنهادی
-  POST /api/mpc/mode           : تغییر مد (advisory/auto/manual)
-  GET  /api/mpc/solution       : آخرین راه‌حل MPC
-  GET  /api/audit              : audit log
-  WS   /ws/sensors             : stream زنده سنسورها
-  WS   /ws/mpc                 : stream زنده راه‌حل‌های MPC
+  GET  /api/health             : سلامت سرور (عمومی)
+  GET  /api/status             : وضعیت شبیه‌ساز + historian  (API Key)
+  GET  /api/sensors/latest     : آخرین نمونه سنسور          (API Key)
+  GET  /api/sensors/history    : تاریخچه (پارامتر n)        (API Key)
+  GET  /api/kpi                : KPI های زنده               (API Key)
+  POST /api/mpc/solve          : حل MPC                     (API Key)
+  POST /api/mpc/apply          : اعمال set-point پیشنهادی   (API Key)
+  POST /api/mpc/mode           : تغییر مد                  (API Key)
+  GET  /api/mpc/solution       : آخرین راه‌حل MPC            (API Key)
+  GET  /api/audit              : audit log                  (API Key)
+  GET  /metrics                : متریک‌های Prometheus        (عمومی)
+  WS   /api/ws/sensors         : stream زنده سنسورها
+  WS   /api/ws/mpc             : stream زنده راه‌حل‌های MPC
 """
 
 from __future__ import annotations
@@ -20,16 +21,19 @@ import asyncio
 import json
 import time
 from typing import Optional
-from fastapi import APIRouter, WebSocket, WebSocketDisconnect
+from fastapi import APIRouter, WebSocket, WebSocketDisconnect, Depends, Request, Response
 from pydantic import BaseModel
 
 from app.core.config import settings
 from app.core.historian import historian
+from app.core.security import verify_api_key
 from app.services.opcua_sim import opcua_sim
 from app.services.mpc_service import mpc_service
+from app.monitoring import metrics
 from dataclasses import asdict
 
 router = APIRouter(prefix="/api")
+metrics_router = APIRouter()
 
 
 class ModeRequest(BaseModel):
@@ -51,7 +55,13 @@ async def health():
     return {"status": "ok", "version": settings.app_version, "name": settings.app_name}
 
 
-@router.get("/status")
+@metrics_router.get("/metrics")
+async def prometheus_metrics():
+    """متریک‌های Prometheus برای scrape."""
+    return Response(content=metrics.render_metrics(), media_type="text/plain")
+
+
+@router.get("/status", dependencies=[Depends(verify_api_key)])
 async def status():
     return {
         "opcua": opcua_sim.status(),
@@ -61,21 +71,23 @@ async def status():
     }
 
 
-@router.get("/sensors/latest")
+@router.get("/sensors/latest", dependencies=[Depends(verify_api_key)])
 async def sensors_latest():
     s = historian.latest()
     if s is None:
         return {"error": "no_data"}
+    if s:
+        metrics.record_sample(s)
     return asdict(s)
 
 
-@router.get("/sensors/history")
+@router.get("/sensors/history", dependencies=[Depends(verify_api_key)])
 async def sensors_history(n: int = 100):
     samples = historian.history(n)
     return {"count": len(samples), "samples": [asdict(s) for s in samples]}
 
 
-@router.get("/kpi")
+@router.get("/kpi", dependencies=[Depends(verify_api_key)])
 async def kpi():
     """محاسبه KPI های زنده از ۶۰ نمونه آخر."""
     samples = historian.history(60)
@@ -114,22 +126,23 @@ async def kpi():
     }
 
 
-@router.post("/mpc/solve")
+@router.post("/mpc/solve", dependencies=[Depends(verify_api_key)])
 async def mpc_solve(req: SolveRequest):
     return mpc_service.solve(operator=req.operator)
 
 
-@router.post("/mpc/apply")
+@router.post("/mpc/apply", dependencies=[Depends(verify_api_key)])
 async def mpc_apply(req: ApplyRequest):
+    metrics.record_apply(req.approved)
     return mpc_service.apply_setpoint(operator=req.operator, approved=req.approved)
 
 
-@router.post("/mpc/mode")
+@router.post("/mpc/mode", dependencies=[Depends(verify_api_key)])
 async def mpc_mode(req: ModeRequest):
     return mpc_service.set_mode(mode=req.mode, operator=req.operator)
 
 
-@router.get("/mpc/solution")
+@router.get("/mpc/solution", dependencies=[Depends(verify_api_key)])
 async def mpc_solution():
     if mpc_service.last_solution is None:
         return {"error": "no_solution"}
@@ -145,7 +158,7 @@ async def mpc_solution():
     }
 
 
-@router.get("/audit")
+@router.get("/audit", dependencies=[Depends(verify_api_key)])
 async def audit(n: int = 50):
     return {"entries": mpc_service.get_audit_log(n)}
 

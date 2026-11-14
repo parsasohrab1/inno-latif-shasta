@@ -1,0 +1,24 @@
+# فایل‌های غیرضروری برای build image
+.git
+.github
+.vscode
+.idea
+__pycache__
+*.pyc
+*.pyo
+*.pyd
+.pytest_cache
+.coverage
+htmlcov
+*.egg-info
+.eggs
+.env
+.env.local
+*.log
+logs/
+monitoring/grafana-data
+node_modules
+*.md.bak
+.DS_Store
+docs/figures/*.bak
+scripts/test_*.py.bak

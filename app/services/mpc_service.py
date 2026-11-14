@@ -17,6 +17,7 @@ from app.core.historian import historian, SensorSample
 from app.models.dryer_model import DryerModel, DryerState
 from app.models.mpc_controller import MPCController, MPCSolution
 from app.models.moisture_predictor import MoisturePredictor
+from app.monitoring import metrics
 
 
 @dataclass
@@ -71,6 +72,12 @@ class MPCService:
             self.last_solution = sol
             self.last_solve_time = time.time()
 
+            # ثبت در متریک‌های Prometheus
+            try:
+                metrics.record_mpc(sol, mode=self.mode)
+            except Exception:
+                pass
+
             self.audit_log.append(AuditEntry(
                 timestamp=time.time(),
                 event_type="mpc_solve",
@@ -82,6 +89,10 @@ class MPCService:
                     "mode": sol.mode,
                 }
             ))
+            try:
+                metrics.record_audit("mpc_solve")
+            except Exception:
+                pass
             # نگه‌داری فقط ۱۰۰۰ مورد آخر
             self.audit_log = self.audit_log[-1000:]
 

@@ -1,0 +1,92 @@
+# Docker Compose برای استقرار کامل دوقلوی دیجیتال لطیف
+# شامل: API + Prometheus + Grafana + TimescaleDB (آماده‌ی فاز Pilot)
+
+version: "3.9"
+
+services:
+  # ---- سرور اصلی FastAPI ----
+  api:
+    build: .
+    image: latif-digital-twin:latest
+    container_name: latif-api
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    environment:
+      - LATIF_HOST=0.0.0.0
+      - LATIF_PORT=8000
+      - LATIF_OPCUA_SIM_ENABLED=true
+      - LATIF_OPCUA_INTERVAL_SEC=5
+      - LATIF_HISTORIAN_BACKEND=memory
+      - LATIF_API_KEY=${LATIF_API_KEY:-changeme}
+      - LATIF_LOG_LEVEL=info
+    volumes:
+      - ./data:/app/data:ro
+      - ./logs:/var/log/latif
+    networks:
+      - latif-net
+    depends_on:
+      - prometheus
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request,sys; sys.exit(0 if urllib.request.urlopen('http://127.0.0.1:8000/api/health',timeout=3).status==200 else 1)"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+
+  # ---- Prometheus برای جمع‌آوری متریک‌ها ----
+  prometheus:
+    image: prom/prometheus:v2.55.0
+    container_name: latif-prometheus
+    restart: unless-stopped
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus-data:/prometheus
+    networks:
+      - latif-net
+
+  # ---- Grafana برای داشبورد عملیاتی ----
+  grafana:
+    image: grafana/grafana:11.3.0
+    container_name: latif-grafana
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_ADMIN_PASSWORD:-admin}
+      - GF_USERS_ALLOW_SIGN_UP=false
+    volumes:
+      - grafana-data:/var/lib/grafana
+    networks:
+      - latif-net
+    depends_on:
+      - prometheus
+
+  # ---- TimescaleDB (برای فاز Pilot — حالا اختیاری) ----
+  # اگر فعال شد، LATIF_HISTORIAN_BACKEND=timescale و LATIF_TS_DSN را تنظیم کنید
+  timescaledb:
+    image: timescale/timescaledb:2.17.1-pg16
+    container_name: latif-timescaledb
+    restart: unless-stopped
+    ports:
+      - "5432:5432"
+    environment:
+      - POSTGRES_DB=latif
+      - POSTGRES_USER=latif
+      - POSTGRES_PASSWORD=${TS_PASSWORD:-latif_secret}
+    volumes:
+      - timescale-data:/var/lib/postgresql/data
+    networks:
+      - latif-net
+    profiles: ["pilot"]   # فقط با --profile pilot اجرا می‌شود
+
+networks:
+  latif-net:
+    driver: bridge
+
+volumes:
+  prometheus-data:
+  grafana-data:
+  timescale-data:

@@ -1,36 +1,37 @@
 # وابستگی‌های backend دوقلوی دیجیتال لطیف
 # نصب: pip install -r requirements.txt
+# توجه: نسخه‌ها با محدوده >= برای سازگاری با CI/PyPI
 
 # Web framework
-fastapi==0.128.0
-uvicorn[standard]==0.44.0
-pydantic==2.12.5
-pydantic-settings==2.13.5
+fastapi>=0.128.0
+uvicorn[standard]>=0.44.0
+pydantic>=2.12.5
+pydantic-settings>=2.13.1
 
 # Numeric / Data
-numpy==2.1.3
-pandas==2.2.3
-scipy==1.14.1
+numpy>=2.1.3
+pandas>=2.2.3
+scipy>=1.14.1
 
 # تولید داده و نمودار (اسکریپت‌ها)
-matplotlib==3.9.0
-arabic-reshaper==3.1.0
-python-bidi==0.6.12
+matplotlib>=3.9.2
+arabic-reshaper>=3.1.0
+python-bidi>=0.6.12
 
 # مانیتورینگ
-prometheus-client==0.24.1
+prometheus-client>=0.24.1
 
 # WebSocket (در uvicorn[standard] گنجانده شده)
-# websockets==16.0
+# websockets>=16.0
 
-# تست (اختیاری برای توسعه)
-pytest==9.0.2
-pytest-asyncio==1.3.0
-pytest-cov==7.0.0
-httpx==0.28.1
+# تست (برای توسعه)
+pytest>=9.0.2
+pytest-asyncio>=1.3.0
+pytest-cov>=7.0.0
+httpx>=0.28.1
 
 # اختیاری برای فاز Pilot
-# asyncua==1.18.0      # برای OPC-UA واقعی
-# torch==2.5.0          # برای LSTM پیش‌بینی رطوبت
-# asyncpg==0.30.0       # برای TimescaleDB
-# casadi==3.6.5         # برای solver MPC پیشرفته
+# asyncua>=1.18.0      # برای OPC-UA واقعی
+# torch>=2.5.0          # برای LSTM پیش‌بینی رطوبت
+# asyncpg>=0.30.0       # برای TimescaleDB
+# casadi>=3.6.5         # برای solver MPC پیشرفته

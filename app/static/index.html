@@ -1,0 +1,503 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>داشبورد دوقلوی دیجیتال خشک‌کن لطیف</title>
+<link href="https://fonts.googleapis.com/css2?family=Vazirmatn:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: 'Vazirmatn', sans-serif;
+    background: #f4f6f9;
+    color: #2c3e50;
+    min-height: 100vh;
+    padding: 16px;
+  }
+  header {
+    background: linear-gradient(135deg, #34495e, #2c3e50);
+    color: white;
+    padding: 18px 24px;
+    border-radius: 12px;
+    margin-bottom: 16px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+    display: flex; justify-content: space-between; align-items: center;
+    flex-wrap: wrap; gap: 12px;
+  }
+  header h1 { font-size: 20px; font-weight: 700; }
+  header .sub { font-size: 13px; opacity: 0.85; margin-top: 4px; }
+  header .status {
+    display: flex; align-items: center; gap: 8px;
+    background: rgba(255,255,255,0.12);
+    padding: 6px 14px; border-radius: 20px; font-size: 13px;
+  }
+  .dot { width: 10px; height: 10px; border-radius: 50%; display: inline-block; }
+  .dot.green { background: #2ecc71; box-shadow: 0 0 8px #2ecc71; }
+  .dot.yellow { background: #f1c40f; box-shadow: 0 0 8px #f1c40f; }
+  .dot.red { background: #e74c3c; box-shadow: 0 0 8px #e74c3c; }
+
+  .grid { display: grid; gap: 16px; margin-bottom: 16px; }
+  .row-kpi { grid-template-columns: repeat(4, 1fr); }
+  .row-main { grid-template-columns: 2fr 1fr; }
+  .row-mpc { grid-template-columns: 1fr 1fr; }
+  @media (max-width: 1100px) {
+    .row-kpi { grid-template-columns: repeat(2, 1fr); }
+    .row-main, .row-mpc { grid-template-columns: 1fr; }
+  }
+
+  .card {
+    background: white; border-radius: 12px; padding: 16px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+  }
+  .card h2 { font-size: 15px; font-weight: 600; margin-bottom: 12px; color: #34495e; }
+  .card h2 .badge {
+    font-size: 11px; padding: 2px 8px; border-radius: 10px;
+    background: #ecf0f1; color: #7f8c8d; margin-right: 8px; font-weight: 400;
+  }
+
+  .kpi-card { padding: 18px; }
+  .kpi-label { font-size: 13px; color: #7f8c8d; margin-bottom: 6px; }
+  .kpi-value { font-size: 28px; font-weight: 700; color: #2c3e50; line-height: 1.1; }
+  .kpi-unit { font-size: 13px; color: #95a5a6; font-weight: 400; margin-right: 4px; }
+  .kpi-progress { margin-top: 10px; height: 8px; background: #ecf0f1; border-radius: 4px; overflow: hidden; }
+  .kpi-progress-fill { height: 100%; background: linear-gradient(90deg, #27ae60, #2ecc71); transition: width 0.5s; }
+  .kpi-meta { font-size: 12px; color: #95a5a6; margin-top: 6px; display: flex; justify-content: space-between; }
+  .kpi-meta .target { color: #c0392b; font-weight: 600; }
+
+  .chart-box { position: relative; height: 240px; }
+  .chart-box-small { position: relative; height: 200px; }
+
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  table th, table td { text-align: right; padding: 8px 6px; border-bottom: 1px solid #ecf0f1; }
+  table th { color: #7f8c8d; font-weight: 600; font-size: 12px; }
+  table td.num { font-family: 'Vazirmatn', monospace; direction: ltr; text-align: left; }
+
+  .btn {
+    padding: 8px 16px; border: none; border-radius: 8px;
+    font-family: inherit; font-size: 14px; cursor: pointer;
+    font-weight: 600; transition: all 0.2s;
+  }
+  .btn-green { background: #27ae60; color: white; }
+  .btn-green:hover { background: #2ecc71; }
+  .btn-red { background: #e74c3c; color: white; }
+  .btn-red:hover { background: #c0392b; }
+  .btn-blue { background: #3498db; color: white; }
+  .btn-blue:hover { background: #2980b9; }
+  .btn-gray { background: #95a5a6; color: white; }
+  .btn-gray:hover { background: #7f8c8d; }
+  .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+  .mode-selector { display: flex; gap: 8px; margin-bottom: 12px; }
+  .mode-selector button {
+    flex: 1; padding: 8px; border: 1px solid #bdc3c7;
+    background: white; border-radius: 8px; cursor: pointer;
+    font-family: inherit; font-size: 13px;
+  }
+  .mode-selector button.active {
+    background: #34495e; color: white; border-color: #34495e;
+  }
+  .mode-selector button[data-mode="auto"].active { background: #27ae60; border-color: #27ae60; }
+  .mode-selector button[data-mode="advisory"].active { background: #f39c12; border-color: #f39c12; }
+  .mode-selector button[data-mode="manual"].active { background: #e74c3c; border-color: #e74c3c; }
+
+  .sp-row { display: flex; justify-content: space-between; align-items: center;
+            padding: 8px 0; border-bottom: 1px solid #ecf0f1; font-size: 13px; }
+  .sp-row .label { color: #7f8c8d; }
+  .sp-row .value { font-weight: 700; color: #2c3e50; direction: ltr; }
+  .sp-row .value.auto { color: #27ae60; }
+
+  .alert {
+    padding: 10px 14px; border-radius: 8px; margin-bottom: 8px; font-size: 13px;
+  }
+  .alert.info { background: #d6eaf8; color: #1b4f72; border-right: 4px solid #3498db; }
+  .alert.warn { background: #fef9e7; color: #7d6608; border-right: 4px solid #f1c40f; }
+  .alert.critical { background: #fdedec; color: #922b21; border-right: 4px solid #e74c3c; }
+
+  footer {
+    text-align: center; color: #95a5a6; font-size: 12px;
+    margin-top: 24px; padding: 16px;
+  }
+
+  .toast {
+    position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%);
+    background: #2c3e50; color: white; padding: 12px 24px;
+    border-radius: 8px; font-size: 14px; z-index: 9999;
+    box-shadow: 0 4px 16px rgba(0,0,0,0.3);
+    opacity: 0; transition: opacity 0.3s; pointer-events: none;
+  }
+  .toast.show { opacity: 1; }
+</style>
+</head>
+<body>
+
+<header>
+  <div>
+    <h1>داشبورد دوقلوی دیجیتال خشک‌کن خط تیشو — لطیف</h1>
+    <div class="sub">کنترل پیش‌بینانه (MPC) با افق ۱۵ دقیقه · نرخ به‌روزرسانی ۵ دقیقه · الگوی FOREST</div>
+  </div>
+  <div class="status">
+    <span class="dot green" id="status-dot"></span>
+    <span id="status-text">در حال اتصال...</span>
+  </div>
+</header>
+
+<!-- KPI cards -->
+<div class="grid row-kpi">
+  <div class="card kpi-card">
+    <div class="kpi-label">شدت انرژی حرارتی</div>
+    <div class="kpi-value"><span id="kpi-energy">--</span><span class="kpi-unit">kWh/t</span></div>
+    <div class="kpi-progress"><div class="kpi-progress-fill" id="kpi-energy-bar" style="width:0%"></div></div>
+    <div class="kpi-meta">
+      <span>پایه: <span id="kpi-energy-base">2593</span></span>
+      <span class="target">هدف: -10٪</span>
+    </div>
+  </div>
+  <div class="card kpi-card">
+    <div class="kpi-label">پیک مصرف گاز</div>
+    <div class="kpi-value"><span id="kpi-gas">--</span><span class="kpi-unit">Nm³/h</span></div>
+    <div class="kpi-progress"><div class="kpi-progress-fill" id="kpi-gas-bar" style="width:0%; background:linear-gradient(90deg,#e67e22,#f39c12);"></div></div>
+    <div class="kpi-meta">
+      <span>پایه: <span id="kpi-gas-base">460</span></span>
+      <span class="target">هدف: -9٪ پیک</span>
+    </div>
+  </div>
+  <div class="card kpi-card">
+    <div class="kpi-label">نرخ ضایعات رطوبت</div>
+    <div class="kpi-value"><span id="kpi-waste">--</span><span class="kpi-unit">٪</span></div>
+    <div class="kpi-progress"><div class="kpi-progress-fill" id="kpi-waste-bar" style="width:0%; background:linear-gradient(90deg,#c0392b,#e74c3c);"></div></div>
+    <div class="kpi-meta">
+      <span>پایه: <span id="kpi-waste-base">2.6</span>%</span>
+      <span class="target">هدف: -55٪</span>
+    </div>
+  </div>
+  <div class="card kpi-card">
+    <div class="kpi-label">میانگین رطوبت نهایی</div>
+    <div class="kpi-value"><span id="kpi-moisture">--</span><span class="kpi-unit">٪</span></div>
+    <div class="kpi-progress"><div class="kpi-progress-fill" id="kpi-moisture-bar" style="width:50%; background:linear-gradient(90deg,#8e44ad,#9b59b6);"></div></div>
+    <div class="kpi-meta">
+      <span>هدف: 5.0٪ ± 0.5٪</span>
+      <span id="kpi-out-of-spec">رویداد خارج از محدوده: --</span>
+    </div>
+  </div>
+</div>
+
+<!-- Main charts row -->
+<div class="grid row-main">
+  <div class="card">
+    <h2>سری زمانی سنسورها <span class="badge">۶۰ نمونه اخیر</span></h2>
+    <div class="chart-box"><canvas id="chart-sensors"></canvas></div>
+  </div>
+  <div class="card">
+    <h2>حالت خشک‌کن (آخرین نمونه)</h2>
+    <table>
+      <tr><th>پارامتر</th><th>مقدار</th><th>واحد</th></tr>
+      <tr><td>دمای هود</td><td class="num" id="s-hood">--</td><td>°C</td></tr>
+      <tr><td>سطح یانکی</td><td class="num" id="s-yankee">--</td><td>°C</td></tr>
+      <tr><td>فشار بخار</td><td class="num" id="s-steam-p">--</td><td>bar</td></tr>
+      <tr><td>هوای گرم</td><td class="num" id="s-hotair">--</td><td>°C</td></tr>
+      <tr><td>رطوبت ورودی</td><td class="num" id="s-moist-in">--</td><td>%</td></tr>
+      <tr><td>رطوبت خروجی</td><td class="num" id="s-moist-out">--</td><td>%</td></tr>
+      <tr><td>گرماژ</td><td class="num" id="s-bw">--</td><td>g/m²</td></tr>
+      <tr><td>سرعت ماشین</td><td class="num" id="s-speed">--</td><td>m/min</td></tr>
+      <tr><td>دبی بخار</td><td class="num" id="s-steam-f">--</td><td>t/h</td></tr>
+      <tr><td>دبی گاز</td><td class="num" id="s-gas">--</td><td>Nm³/h</td></tr>
+      <tr><td>تولید</td><td class="num" id="s-prod">--</td><td>t/h</td></tr>
+      <tr><td>نرمی</td><td class="num" id="s-soft">--</td><td>1-10</td></tr>
+      <tr><td>مویینگی</td><td class="num" id="s-cap">--</td><td>mm</td></tr>
+      <tr><td>شیفت</td><td class="num" id="s-shift">--</td><td>0-2</td></tr>
+      <tr><td>اوج گاز</td><td class="num" id="s-peak">--</td><td>—</td></tr>
+    </table>
+  </div>
+</div>
+
+<!-- MPC control panel -->
+<div class="grid row-mpc">
+  <div class="card">
+    <h2>پنل کنترل MPC</h2>
+    <div class="mode-selector">
+      <button data-mode="advisory" onclick="setMode('advisory')">Advisory</button>
+      <button data-mode="auto" onclick="setMode('auto')">Auto</button>
+      <button data-mode="manual" onclick="setMode('manual')">Manual</button>
+    </div>
+    <div id="mode-current" class="alert info">حالت فعلی: <strong>Advisory</strong></div>
+
+    <h3 style="font-size:13px; margin-top:14px; margin-bottom:6px; color:#7f8c8d;">set-point پیشنهادی</h3>
+    <div class="sp-row">
+      <span class="label">دمای هود (°C)</span>
+      <span class="value" id="sp-hood">--</span>
+    </div>
+    <div class="sp-row">
+      <span class="label">فشار بخار (bar)</span>
+      <span class="value" id="sp-steam">--</span>
+    </div>
+    <div class="sp-row">
+      <span class="label">دمای هوای گرم (°C)</span>
+      <span class="value" id="sp-hotair">--</span>
+    </div>
+    <div class="sp-row">
+      <span class="label">سرعت ماشین (m/min)</span>
+      <span class="value" id="sp-speed">--</span>
+    </div>
+
+    <div style="margin-top:12px; display:flex; gap:8px;">
+      <button class="btn btn-green" onclick="applySetpoint(true)">✓ تأیید</button>
+      <button class="btn btn-red" onclick="applySetpoint(false)">✗ رد</button>
+      <button class="btn btn-blue" onclick="solveMPC()" style="margin-right:auto;">↻ حل مجدد</button>
+    </div>
+
+    <div style="margin-top:12px; font-size:12px; color:#95a5a6;">
+      هزینه MPC: <span id="mpc-cost">--</span> ·
+      موجه: <span id="mpc-feasible">--</span> ·
+      زمان: <span id="mpc-ms">--</span> ms
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>پیش‌بینی رطوبت <span class="badge">افق ۱۵ دقیقه</span></h2>
+    <div class="chart-box-small"><canvas id="chart-predict"></canvas></div>
+    <div style="margin-top:8px; font-size:12px; color:#95a5a6;">
+      اطمینان مدل: <span id="mpc-conf">--</span>
+    </div>
+    <hr style="border:none; border-top:1px solid #ecf0f1; margin:14px 0;">
+    <h2>تاریخچه رویدادها (Audit Log)</h2>
+    <div id="audit-log" style="max-height:160px; overflow-y:auto; font-size:12px;">
+      <div style="color:#95a5a6;">در انتظار رویداد...</div>
+    </div>
+  </div>
+</div>
+
+<!-- Predictions chart -->
+<div class="grid">
+  <div class="card">
+    <h2>پیش‌بینی MPC در افق ۱۵ دقیقه <span class="badge">۳ گام</span></h2>
+    <div class="chart-box"><canvas id="chart-mpc-predict"></canvas></div>
+  </div>
+</div>
+
+<footer>
+  محصولات کاغذی لطیف · دوقلوی دیجیتال خط تیشو · نسخه ۰.۱.۰ · ۱۴۰۵/۰۸/۲۴
+</footer>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// ====== helper ======
+function toast(msg, type='info') {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.style.background = type==='error' ? '#c0392b' : type==='success' ? '#27ae60' : '#2c3e50';
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 2500);
+}
+
+function fmt(v, d=2) { return v==null?'--':Number(v).toFixed(d); }
+
+async function api(path, method='GET', body=null) {
+  try {
+    const opts = { method, headers: {'Content-Type':'application/json'} };
+    if (body) opts.body = JSON.stringify(body);
+    const r = await fetch(path, opts);
+    return await r.json();
+  } catch (e) { toast('خطای اتصال به سرور', 'error'); return null; }
+}
+
+// ====== Charts ======
+Chart.defaults.font.family = 'Vazirmatn';
+Chart.defaults.font.size = 11;
+
+const sensorChart = new Chart(document.getElementById('chart-sensors'), {
+  type: 'line',
+  data: {
+    labels: [],
+    datasets: [
+      { label:'رطوبت خروجی %', data:[], borderColor:'#27ae60', backgroundColor:'rgba(39,174,96,0.1)', yAxisID:'y1', tension:0.3 },
+      { label:'دمای هود °C', data:[], borderColor:'#c0392b', backgroundColor:'rgba(192,57,43,0.05)', yAxisID:'y2', tension:0.3 },
+      { label:'دبی گاز Nm³/h', data:[], borderColor:'#e67e22', backgroundColor:'rgba(230,126,34,0.05)', yAxisID:'y3', tension:0.3 },
+    ]
+  },
+  options: {
+    responsive:true, maintainAspectRatio:false,
+    interaction:{mode:'index', intersect:false},
+    scales:{
+      y1:{ position:'right', ticks:{color:'#27ae60'}, min:2, max:8 },
+      y2:{ position:'left', ticks:{color:'#c0392b'}, grid:{drawOnChartArea:false}, min:380, max:460 },
+      y3:{ position:'left', ticks:{color:'#e67e22'}, grid:{drawOnChartArea:false}, offset:true, min:280, max:380 },
+    },
+    plugins:{ legend:{position:'bottom'} }
+  }
+});
+
+const predictChart = new Chart(document.getElementById('chart-predict'), {
+  type: 'line',
+  data: { labels: ['t','+5','+10','+15'], datasets: [
+    { label:'پیش‌بینی رطوبت %', data:[5], borderColor:'#9b59b6', backgroundColor:'rgba(155,89,182,0.15)', tension:0.3, fill:true },
+    { label:'هدف 5%', data:[5,5,5,5], borderColor:'#34495e', borderDash:[5,5], pointRadius:0 },
+    { label:'حد بالا 7%', data:[7,7,7,7], borderColor:'#e74c3c', borderDash:[3,3], pointRadius:0 },
+    { label:'حد پایین 3%', data:[3,3,3,3], borderColor:'#e74c3c', borderDash:[3,3], pointRadius:0 },
+  ]},
+  options: { responsive:true, maintainAspectRatio:false, scales:{y:{min:1, max:9}}, plugins:{legend:{position:'bottom'}} }
+});
+
+const mpcPredictChart = new Chart(document.getElementById('chart-mpc-predict'), {
+  type: 'line',
+  data: { labels:['گام 0','گام 1','گام 2','گام 3'], datasets:[
+    { label:'شدت انرژی kWh/t', data:[], borderColor:'#e67e22', backgroundColor:'rgba(230,126,34,0.1)', tension:0.3 },
+    { label:'تولید t/h', data:[], borderColor:'#27ae60', backgroundColor:'rgba(39,174,96,0.05)', tension:0.3, yAxisID:'y1' },
+  ]},
+  options: { responsive:true, maintainAspectRatio:false,
+    scales:{ y:{position:'right',min:2000,max:2800}, y1:{position:'left',min:6,max:9,grid:{drawOnChartArea:false}} },
+    plugins:{legend:{position:'bottom'}}
+  }
+});
+
+// ====== State ======
+let currentMode = 'advisory';
+let currentSensor = null;
+let currentSolution = null;
+let latestMoisture = 5.0;
+
+// ====== Polling ======
+async function pollStatus() {
+  const s = await api('/api/status');
+  if (!s) return;
+  document.getElementById('status-text').textContent =
+    ` historian: ${s.historian.count} نمونه · گام: ${s.opcua.step}`;
+  const dot = document.getElementById('status-dot');
+  if (s.opcua.running) { dot.className = 'dot green'; }
+  else { dot.className = 'dot red'; }
+}
+
+async function pollSensors() {
+  const s = await api('/api/sensors/latest');
+  if (!s || s.error) return;
+  currentSensor = s;
+  latestMoisture = s.moisture_out_pct;
+  // state table
+  document.getElementById('s-hood').textContent = s.hood_temp_c;
+  document.getElementById('s-yankee').textContent = s.yankee_surface_c;
+  document.getElementById('s-steam-p').textContent = s.steam_pressure_bar;
+  document.getElementById('s-hotair').textContent = s.hot_air_temp_c;
+  document.getElementById('s-moist-in').textContent = s.moisture_in_pct;
+  document.getElementById('s-moist-out').textContent = s.moisture_out_pct;
+  document.getElementById('s-bw').textContent = s.basis_weight_gm2;
+  document.getElementById('s-speed').textContent = s.machine_speed_mmin;
+  document.getElementById('s-steam-f').textContent = s.steam_flow_th;
+  document.getElementById('s-gas').textContent = s.gas_flow_nm3h;
+  document.getElementById('s-prod').textContent = s.production_th;
+  document.getElementById('s-soft').textContent = s.softness_1_10;
+  document.getElementById('s-cap').textContent = s.capillary_rise_mm;
+  document.getElementById('s-shift').textContent = s.shift;
+  document.getElementById('s-peak').textContent = s.is_peak_hour ? 'بله' : 'خیر';
+
+  // history chart
+  const hist = await api('/api/sensors/history?n=60');
+  if (hist && hist.samples) {
+    sensorChart.data.labels = hist.samples.map(x => {
+      const d = new Date(x.timestamp * 1000);
+      return d.getHours()+':'+String(d.getMinutes()).padStart(2,'0');
+    });
+    sensorChart.data.datasets[0].data = hist.samples.map(x => x.moisture_out_pct);
+    sensorChart.data.datasets[1].data = hist.samples.map(x => x.hood_temp_c);
+    sensorChart.data.datasets[2].data = hist.samples.map(x => x.gas_flow_nm3h);
+    sensorChart.update('none');
+  }
+}
+
+async function pollKPI() {
+  const k = await api('/api/kpi');
+  if (!k || k.error) return;
+  document.getElementById('kpi-energy').textContent = k.thermal_intensity_kWht;
+  document.getElementById('kpi-gas').textContent = k.gas_peak_nm3h;
+  document.getElementById('kpi-waste').textContent = k.waste_pct;
+  document.getElementById('kpi-moisture').textContent = k.moisture_avg_pct;
+  document.getElementById('kpi-out-of-spec').textContent = '—';
+  // progress bars
+  const eRed = Math.max(0, Math.min(100, k.thermal_reduction_pct / k.thermal_target_reduction_pct * 100));
+  document.getElementById('kpi-energy-bar').style.width = eRed + '%';
+  const gRed = Math.max(0, Math.min(100, k.gas_peak_reduction_pct / k.gas_peak_target_reduction_pct * 100));
+  document.getElementById('kpi-gas-bar').style.width = gRed + '%';
+  const wRed = Math.max(0, Math.min(100, k.waste_reduction_pct / k.waste_target_reduction_pct * 100));
+  document.getElementById('kpi-waste-bar').style.width = wRed + '%';
+  const mBar = Math.max(0, Math.min(100, (7 - k.moisture_avg_pct) / 4 * 100));
+  document.getElementById('kpi-moisture-bar').style.width = mBar + '%';
+}
+
+async function solveMPC() {
+  const r = await api('/api/mpc/solve', 'POST', { operator: 'web' });
+  if (!r || r.error) { toast('خطا در حل MPC', 'error'); return; }
+  currentSolution = r.solution;
+  // setpoints
+  document.getElementById('sp-hood').textContent = fmt(r.solution.setpoints.hood_temp[0], 1);
+  document.getElementById('sp-steam').textContent = fmt(r.solution.setpoints.steam_pressure[0], 2);
+  document.getElementById('sp-hotair').textContent = fmt(r.solution.setpoints.hot_air_temp[0], 1);
+  document.getElementById('sp-speed').textContent = fmt(r.solution.setpoints.machine_speed[0], 0);
+  document.getElementById('mpc-cost').textContent = fmt(r.solution.cost, 2);
+  document.getElementById('mpc-feasible').textContent = r.solution.feasible ? 'بله' : 'خیر';
+  document.getElementById('mpc-ms').textContent = r.solution.computation_time_ms;
+  // moisture prediction
+  const mp = r.moisture_prediction;
+  predictChart.data.datasets[0].data = [latestMoisture, ...mp.pred_pct];
+  predictChart.update();
+  document.getElementById('mpc-conf').textContent = (mp.confidence*100).toFixed(0) + '%';
+  // mpc predict chart
+  mpcPredictChart.data.datasets[0].data = r.solution.predictions.map(p => p.thermal_energy_intensity_kWht);
+  mpcPredictChart.data.datasets[1].data = r.solution.predictions.map(p => p.production_th);
+  mpcPredictChart.update();
+  toast('MPC حل شد', 'success');
+}
+
+async function applySetpoint(approved) {
+  if (!currentSolution) { toast('ابتدا MPC را حل کنید', 'error'); return; }
+  const r = await api('/api/mpc/apply', 'POST', { approved, operator:'web' });
+  if (!r || r.error) { toast(r?.message || 'خطا', 'error'); return; }
+  toast(approved ? 'set-point اعمال شد' : 'set-point رد شد', approved?'success':'info');
+  loadAudit();
+}
+
+async function setMode(mode) {
+  const r = await api('/api/mpc/mode', 'POST', { mode, operator:'web' });
+  if (!r || r.error) { toast('خطا در تغییر مد', 'error'); return; }
+  currentMode = mode;
+  document.querySelectorAll('.mode-selector button').forEach(b => {
+    b.classList.toggle('active', b.dataset.mode === mode);
+  });
+  const alertBox = document.getElementById('mode-current');
+  alertBox.className = 'alert ' + (mode==='auto'?'info':mode==='manual'?'critical':'warn');
+  alertBox.innerHTML = 'حالت فعلی: <strong>' + mode + '</strong>';
+  toast('مد به ' + mode + ' تغییر یافت', 'success');
+  loadAudit();
+}
+
+async function loadAudit() {
+  const r = await api('/api/audit?n=15');
+  if (!r || !r.entries) return;
+  const html = r.entries.slice().reverse().map(e => {
+    const t = new Date(e.timestamp * 1000).toLocaleTimeString('fa-IR');
+    let cls = 'info';
+    if (e.event_type.includes('reject') || e.event_type.includes('fallback')) cls='critical';
+    else if (e.event_type.includes('apply')) cls='warn';
+    return `<div class="alert ${cls}" style="padding:6px 10px; font-size:11px; margin-bottom:4px;">
+      <b>${t}</b> · ${e.event_type} · ${e.operator}
+    </div>`;
+  }).join('');
+  document.getElementById('audit-log').innerHTML = html || '<div style="color:#95a5a6;">—</div>';
+}
+
+// ====== Init ======
+async function init() {
+  document.querySelector('.mode-selector button[data-mode="advisory"]').classList.add('active');
+  pollStatus(); pollSensors(); pollKPI(); loadAudit();
+  setInterval(pollStatus, 2000);
+  setInterval(pollSensors, 3000);
+  setInterval(pollKPI, 5000);
+  setInterval(loadAudit, 10000);
+  // حل MPC خودکار هر ۵ ثانیه
+  setInterval(() => { if (currentMode !== 'manual') solveMPC(); }, 5000);
+  setTimeout(solveMPC, 1000);
+}
+init();
+</script>
+
+</body>
+</html>

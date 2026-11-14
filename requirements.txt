@@ -1,0 +1,26 @@
+# وابستگی‌های backend دوقلوی دیجیتال لطیف
+# نصب: pip install -r requirements.txt
+
+# Web framework
+fastapi==0.128.0
+uvicorn[standard]==0.44.0
+pydantic==2.12.5
+pydantic-settings==2.13.5
+
+# Numeric / Data
+numpy==2.1.3
+pandas==2.2.3
+scipy==1.14.1
+
+# WebSocket (در uvicorn[standard] گنجانده شده)
+# websockets==16.0
+
+# تولید داده و نمودار (اسکریپت‌ها)
+matplotlib==3.9.0
+arabic-reshaper==3.1.0
+python-bidi==0.6.12
+
+# اختیاری برای فاز Pilot
+# asyncpg==0.30.0     # برای TimescaleDB
+# asyncua==1.18.0     # برای OPC-UA واقعی
+# casadi==3.6.5       # برای solver MPC پیشرفته

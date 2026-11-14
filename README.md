@@ -20,7 +20,8 @@
 - [داده‌های سنتتیک](#-دادههای-سنتتیک)
 - [نمودارها](#-نمودارها)
 - [شاخص‌های هدف (KPI)](#-شاخصهای-هدف-kpi)
-- [نحوه اجرای اسکریپت‌ها](#-نحوه-اجرای-اسکریپتها)
+- [نرم‌افزار دوقلوی دیجیتال](#-نرمافزار-دوقلوی-دیجیتال)
+- [نحوه اجرای اسکریپت‌ها و سرور](#-نحوه-اجرای-اسکریپتها-و-سرور)
 - [معماری سیستم](#-معماری-سیستم)
 - [توسعه و مشارکت](#-توسعه-و-مشارکت)
 
@@ -53,6 +54,7 @@
 ```
 inno-latif-shasta/
 ├── README.md                    # این فایل
+├── requirements.txt              # وابستگی‌های Python
 ├── docs/                         # مستندات
 │   ├── BRS.md                    # سند نیازمندی‌های کسب‌وکار (جامع)
 │   ├── SRS.md                    # سند نیازمندی‌های نرم‌افزار (IEEE 830)
@@ -64,7 +66,25 @@ inno-latif-shasta/
 │       ├── fig_gas_peak.png
 │       ├── fig_moisture_gap.png
 │       ├── fig_waste.png
-│       └── fig_kpi_dashboard.png
+│       ├── fig_kpi_dashboard.png
+│       └── fig_mpc_simulation.png
+├── app/                          # نرم‌افزار دوقلوی دیجیتال (FastAPI)
+│   ├── __init__.py
+│   ├── main.py                   # نقطه ورود FastAPI
+│   ├── api/
+│   │   └── routes.py             # مسیرهای REST + WebSocket
+│   ├── core/
+│   │   ├── config.py             # تنظیمات (Pydantic Settings)
+│   │   └── historian.py           # پایگاه داده سری‌زمانی (memory/sqlite)
+│   ├── models/                   # مدل‌های دوقلوی دیجیتال
+│   │   ├── dryer_model.py        # مدل ترمودینامیکی خشک‌کن
+│   │   ├── moisture_predictor.py # پیش‌بینی‌کننده رطوبت (LSTM ساده‌شده)
+│   │   └── mpc_controller.py     # کنترل‌کننده پیش‌بینانه MPC
+│   ├── services/
+│   │   ├── opcua_sim.py          # شبیه‌ساز OPC-UA (تولید داده سنسور)
+│   │   └── mpc_service.py        # سرویس MPC + Audit Log
+│   └── static/
+│       └── index.html            # داشبورد HTML/JS (Chart.js)
 ├── data/
 │   └── synthetic/                # داده‌های سنتتیک تولیدشده
 │       ├── dryer_sensors_timeseries.csv
@@ -72,10 +92,13 @@ inno-latif-shasta/
 │       ├── moisture_gap_timeseries.csv
 │       ├── thermal_energy_monthly.csv
 │       ├── moisture_waste_weekly.csv
+│       ├── mpc_simulation.csv
 │       └── summary_stats.json
-└── scripts/                      # اسکریپت‌های تولید داده و نمودار
+└── scripts/                      # اسکریپت‌های تولید داده/نمودار و تست
     ├── generate_synthetic_data.py
-    └── generate_figures.py
+    ├── generate_figures.py
+    ├── test_mpc.py               # تست و شبیه‌سازی MPC
+    └── test_e2e.py               # تست end-to-end سرور
 ```
 
 ---
@@ -108,6 +131,7 @@ inno-latif-shasta/
 | `moisture_gap_timeseries.csv` | سری زمانی گپ رطوبت از نقطه تنظیم (پایه و MPC) | ۲۰۱۶ نقطه |
 | `thermal_energy_monthly.csv` | شدت انرژی ماهانه (پایه/بهینه/صرفه‌جویی) | ۱۲ نقطه |
 | `moisture_waste_weekly.csv` | ضایعات هفتگی ناشی از رطوبت (پایه/بهینه) | ۱۲ نقطه |
+| `mpc_simulation.csv` | خروجی شبیه‌سازی ۲ ساعته MPC (۲۴ گام) | ۲۴ نقطه |
 | `summary_stats.json` | خلاصه آماری کل مجموعه‌ها | — |
 
 ### خلاصه آماری خط پایه
@@ -147,6 +171,7 @@ inno-latif-shasta/
 | [`fig_moisture_gap.png`](docs/figures/fig_moisture_gap.png) | سری زمانی گپ رطوبت |
 | [`fig_waste.png`](docs/figures/fig_waste.png) | ضایعات هفتگی پایه vs بهینه‌شده |
 | [`fig_kpi_dashboard.png`](docs/figures/fig_kpi_dashboard.png) | داشبورد KPI های هدف |
+| [`fig_mpc_simulation.png`](docs/figures/fig_mpc_simulation.png) | نتایج شبیه‌سازی ۲ ساعته MPC (خروجی `test_mpc.py`) |
 
 </div>
 
@@ -165,6 +190,55 @@ inno-latif-shasta/
 | ۳ | نرخ ضایعات رطوبت (٪ تولید) | ۲.۶٪ | ≤۱.۲٪ (کاهش ≥۵۵٪) | ۱۲ ماه |
 
 شاخص‌های مکمل: حفظ نرمی ≥۷.۵، مویینگی ≥۸۰ mm، انحراف معیار رطوبت ≤۰.۳٪، نرخ Auto Mode ≥۸۰٪.
+
+</div>
+
+---
+
+## 🖥️ نرم‌افزار دوقلوی دیجیتال
+
+<div dir="rtl">
+
+نرم‌افزار اجرایی در فولدر `app/` پیاده‌سازی شده و شامل سه مؤلفه اصلی است:
+
+### ۱. مدل‌ها (`app/models/`)
+
+- **`dryer_model.py`** — مدل ترمودینامیکی خشک‌کن هیبریدی بر اساس تراز جرم و انرژی. جریان انرژی، رطوبت خروجی، شدت انرژی حرارتی و CO₂ را محاسبه می‌کند. قابلیت پیش‌بینی در افق چند گام ۵ دقیقه‌ای دارد.
+- **`moisture_predictor.py`** — پیش‌بینی‌کننده رطوبت نهایی با مدل شبکه‌ی عصبی ساده (پیاده‌سازی numpy، بدون وابستگی به PyTorch/TensorFlow). ورودی: ۶ گام گذشته ۸ ویژگی. خروجی: پیش‌بینی در t+5، t+10، t+15. پشتیبانی از آموزش تدریجی (online learning).
+- **`mpc_controller.py`** — کنترل‌کننده پیش‌بینانه MPC با حل‌کننده‌ی داخلی مبتنی بر جستجوی محلی + شبیه‌سازی annealing (بدون وابستگی به CasADi). تابع هدف چندمتغیره با قیود ایمنی و کیفی. میانگین زمان حل در تست: **۲.۱۶ ms** (حد SRS: ۱۰ ثانیه).
+
+### ۲. سرور FastAPI (`app/api/`, `app/core/`, `app/services/`)
+
+| مسیر | متد | شرح |
+|---|---|---|
+| `/api/health` | GET | سلامت سرور |
+| `/api/status` | GET | وضعیت شبیه‌ساز + historian |
+| `/api/sensors/latest` | GET | آخرین نمونه سنسور |
+| `/api/sensors/history` | GET | تاریخچه (پارامتر `n`) |
+| `/api/kpi` | GET | KPI های زنده (شدت انرژی، پیک گاز، ضایعات) |
+| `/api/mpc/solve` | POST | حل MPC با آخرین داده |
+| `/api/mpc/apply` | POST | اعمال/رد set-point پیشنهادی |
+| `/api/mpc/mode` | POST | تغییر مد (advisory/auto/manual) |
+| `/api/mpc/solution` | GET | آخرین راه‌حل MPC |
+| `/api/audit` | GET | audit log |
+| `/api/ws/sensors` | WS | stream زنده سنسورها |
+| `/api/ws/mpc` | WS | stream زنده راه‌حل‌های MPC |
+
+- **شبیه‌ساز OPC-UA** (`opcua_sim.py`): داده سنسور را با مدل فیزیکی همانند اسکریپت `generate_synthetic_data.py` تولید و در historian ذخیره می‌کند (در فاز Pilot با OPC-UA واقعی DCS جایگزین می‌شود).
+- **Historian** (`historian.py`): پایگاه داده سری‌زمانی با دو backend: memory (آزمایشی) و sqlite (پایدار). در فاز Pilot با TimescaleDB جایگزین می‌شود.
+- **MPC Service** (`mpc_service.py`): لایه‌ی سرویس با Audit Log، مدیریت مد (advisory/auto/manual)، fallback ایمنی.
+
+### ۳. داشبورد (`app/static/index.html`)
+
+داشبورد HTML/JS تک‌صفحه‌ای با:
+- ۴ کارت KPI زنده (شدت انرژی، پیک گاز، ضایعات رطوبت، میانگین رطوبت)
+- نمودار سری زمانی ۶۰ نمونه اخیر (رطوبت، دمای هود، دبی گاز)
+- جدول حالت خشک‌کن با ۱۵ پارامتر زنده
+- پنل کنترل MPC با سه مد (Advisory/Auto/Manual)، set-point پیشنهادی و دکمه‌های تأیید/رد
+- نمودار پیش‌بینی رطوبت در افق ۱۵ دقیقه با باندهای حد
+- نمودار پیش‌بینی MPC (شدت انرژی و تولید در ۳ گام)
+- Audit Log زنده
+- فونت Vazirmatn و راست‌چین کامل
 
 </div>
 
@@ -202,6 +276,48 @@ python scripts/generate_figures.py
 > cp /tmp/vazirmatn_extract/fonts/ttf/Vazirmatn-*.ttf ~/.local/share/fonts/
 > fc-cache -f ~/.local/share/fonts/
 > ```
+
+### ۳) نصب وابستگی‌ها و اجرای سرور
+
+```bash
+# نصب وابستگی‌ها
+pip install -r requirements.txt
+
+# اجرای سرور FastAPI (با شبیه‌ساز OPC-UA فعال)
+cd /home/z/my-project/inno-latif-shasta
+uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+```
+
+پس از بالا آمدن سرور:
+- داشبورد: http://localhost:8000/ یا http://localhost:8000/dashboard
+- مستندات API (Swagger): http://localhost:8000/docs
+- مستندات ReDoc: http://localhost:8000/redoc
+- نمونه API: http://localhost:8000/api/kpi
+
+### ۴) تست‌ها
+
+```bash
+# تست و شبیه‌سازی مدل MPC (۲۴ گام = ۲ ساعت)
+python scripts/test_mpc.py
+# خروجی: data/synthetic/mpc_simulation.csv و docs/figures/fig_mpc_simulation.png
+
+# تست end-to-end سرور (۱۰ مورد، شامل: health, status, sensors, MPC, KPI, audit, dashboard)
+python scripts/test_e2e.py
+# خروجی: ✅ همه تست‌ها موفق بودند (۱۰/۱۰)
+```
+
+### ۵) متغیرهای محیط قابل تنظیم
+
+| متغیر | پیش‌فرض | شرح |
+|---|---|---|
+| `LATIF_HOST` | `0.0.0.0` | آدرس bind |
+| `LATIF_PORT` | `8000` | پورت سرور |
+| `LATIF_OPCUA_SIM_ENABLED` | `true` | فعال/غیرفعال کردن شبیه‌ساز |
+| `LATIF_OPCUA_INTERVAL_SEC` | `5` | فاصله تولید داده (ثانیه) |
+| `LATIF_HISTORIAN_BACKEND` | `memory` | `memory` یا `sqlite` |
+| `LATIF_HISTORIAN_PATH` | `/tmp/latif_historian.sqlite` | مسیر SQLite |
+| `LATIF_MPC_AUTO_APPLY` | `false` | `false`=Advisory، `true`=Auto |
+| `LATIF_MPC_MAX_ITERS` | `30` | حداکثر تکرار حل MPC |
 
 ---
 
